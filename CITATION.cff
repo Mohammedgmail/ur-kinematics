@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "ur-kinematics: kinematics for Universal Robots e-Series arms"
+type: software
+authors:
+  - family-names: Alfandi
+    given-names: Mohammed
+    affiliation: Newcastle University
+version: 0.1.0
+date-released: 2026-10-17
+license: MIT
+repository-code: "https://github.com/Mohammedgmail/ur-kinematics"
+keywords:
+  - robotics
+  - kinematics
+  - inverse kinematics
+  - Universal Robots
+  - UR3e

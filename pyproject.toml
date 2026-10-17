@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urkin"
+version = "0.1.0"
+description = "Forward/inverse kinematics and Jacobians for Universal Robots e-Series arms (UR3e, UR5e, UR10e)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mohammed Alfandi" }]
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.23"]
+keywords = ["robotics", "kinematics", "inverse-kinematics", "universal-robots", "ur3e", "ur5e", "ur10e"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.6"]
+dev = ["pytest>=7", "ruff==0.16.8", "matplotlib>=3.6"]
+
+[project.urls]
+Homepage = "https://github.com/Mohammedgmail/ur-kinematics"
+Issues = "https://github.com/Mohammedgmail/ur-kinematics/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY"]
+ignore = ["N806"]
