@@ -117,8 +117,11 @@ class URRobot:
 
         Returns an array of shape ``(n, 6)`` with ``0 <= n <= 8``, angles
         wrapped to ``[-pi, pi)``. An empty array means the pose is unreachable.
-        At the wrist singularity (``sin(q5) == 0``) ``q6`` is not unique and
-        is set to 0.
+
+        At the wrist singularity (``sin(q5) == 0``) only ``q4 +/- q6`` is
+        determined, so there is a one-parameter family of solutions. One member
+        per branch is returned: ``q6`` is chosen so that the elbow sits at
+        mid-reach, which is always reachable whenever the pose is.
         """
         T = np.asarray(T, dtype=float)
         if tool is not None:
@@ -136,23 +139,27 @@ class URRobot:
             return np.empty((0, 6))
         phi = np.arccos(np.clip(d4 / max(r, 1e-12), -1.0, 1.0))
         psi = np.arctan2(p05[1], p05[0])
-        p06 = T[:3, 3]
+        z6 = T[:3, 2]
         T60 = inv_transform(T)
 
         for t1 in (psi + phi + np.pi / 2, psi - phi + np.pi / 2):
             s1, c1 = np.sin(t1), np.cos(t1)
 
-            # --- theta5
-            c5 = (p06[0] * s1 - p06[1] * c1 - d4) / d6
-            if abs(c5) > 1.0 + tol:
-                continue
-            c5 = np.clip(c5, -1.0, 1.0)
-            for t5 in (np.arccos(c5), -np.arccos(c5)):
+            # --- theta5: angle between the flange z-axis and joint 2's axis z1.
+            # Using atan2(|z1 x z6|, z1 . z6) instead of arccos(c5) keeps full
+            # precision near the wrist singularity (q5 = 0 or pi), where arccos
+            # turns a 1e-16 rounding error into a ~1e-8 angle error.
+            z1 = np.array([s1, -c1, 0.0])
+            c5 = float(z1 @ z6)
+            s5_abs = float(np.linalg.norm(np.cross(z1, z6)))
+            for t5 in (np.arctan2(s5_abs, c5), np.arctan2(-s5_abs, c5)):
                 s5 = np.sin(t5)
 
                 # --- theta6 (free at the wrist singularity)
                 if abs(s5) < 1e-10:
-                    t6 = 0.0
+                    t6 = self._singular_wrist_q6(T, p05[:3], z1)
+                    if t6 is None:
+                        continue
                 else:
                     t6 = np.arctan2(
                         (-T60[1, 0] * s1 + T60[1, 1] * c1) / s5,
@@ -248,6 +255,39 @@ class URRobot:
         return IKResult(q, False, max_iter, *self._err_norms(e))
 
     # ------------------------------------------------------------ helpers
+    def _singular_wrist_q6(self, T: np.ndarray, p05: np.ndarray, z1: np.ndarray) -> float | None:
+        """Pick q6 at the wrist singularity so the elbow is at mid-reach.
+
+        With z6 parallel to z1, joint 5's axis z4 may point anywhere in the plane
+        normal to z1. Frame 3's origin then lies on a circle of radius d5 around
+        ``v = p05 - d4*z1 - [0, 0, d1]`` (relative to frame 1), and the 2-link
+        chain a2, a3 must reach it. We choose the point on that circle whose
+        distance from the shoulder is closest to |a2| (the middle of the
+        reachable annulus) and convert the resulting z4 direction into q6.
+        """
+        a2, a3 = abs(self.a[1]), abs(self.a[2])
+        d1, d4, d5 = self.d[0], self.d[3], self.d[4]
+        lo, hi = abs(a2 - a3), a2 + a3
+
+        v = p05 - d4 * z1 - np.array([0.0, 0.0, d1])
+        n = float(np.linalg.norm(v))
+        if n > 1e-12:
+            v_hat = v / n
+        else:  # wrist centre on the shoulder: any in-plane direction will do
+            v_hat = np.cross(z1, [0.0, 0.0, 1.0])
+            v_hat /= np.linalg.norm(v_hat)
+
+        rho = float(np.clip((lo + hi) / 2.0, abs(n - d5), n + d5))
+        if rho < lo - 1e-12 or rho > hi + 1e-12:
+            return None
+        cos_b = 1.0 if n <= 1e-12 else (n**2 + d5**2 - rho**2) / (2.0 * n * d5)
+        beta = np.arccos(np.clip(cos_b, -1.0, 1.0))
+        z4 = np.cos(beta) * v_hat + np.sin(beta) * np.cross(z1, v_hat)
+
+        # z4 = -(sin(q6) x6 + cos(q6) y6) at the singularity
+        x6, y6 = T[:3, 0], T[:3, 1]
+        return float(np.arctan2(-(z4 @ x6), -(z4 @ y6)))
+
     @staticmethod
     def _as_q(q) -> np.ndarray:
         q = np.asarray(q, dtype=float).reshape(-1)

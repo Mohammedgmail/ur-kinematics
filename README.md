@@ -83,8 +83,10 @@ For the UR3e:
 solution with three binary choices, giving up to 2 × 2 × 2 = 8 solutions:
 
 1. **q1** from the wrist-centre position (shoulder branch A or B).
-2. **q5** from the flange position projected on the shoulder plane (wrist + or −).
-3. **q6** from the flange orientation (undefined at the wrist singularity q5 = 0, set to 0).
+2. **q5** from the angle between the flange z-axis and joint 2's axis (wrist + or −),
+   computed with `atan2` so it stays exact right at the wrist singularity.
+3. **q6** from the flange orientation. At the wrist singularity (q5 = 0 or π) only q4 ± q6 is
+   determined, so q6 is chosen to place the elbow at mid-reach.
 4. **q2, q3** from a planar two-link problem (elbow + or −).
 5. **q4** from the remaining rotation.
 
@@ -101,6 +103,7 @@ The test suite (`pytest`) runs on every push via GitHub Actions, for all three m
 - The original joint vector is always among the returned solutions.
 - The geometric Jacobian matches finite differences of the forward kinematics.
 - Numerical IK started from 300 random seeds converges only to the 8 analytical solutions.
+- Exactly at the wrist singularity (q5 = 0 or π), solutions stay exact to 1e-10 over 100 random poses per model.
 - Manipulability is zero at the wrist (q5 = 0) and elbow (q3 = 0) singularities.
 - Rotation-vector conversions are stable near 0 and π.
 
@@ -114,6 +117,7 @@ targets to a real robot.
 ## Project layout
 
 ```
+CHANGELOG.md      # release notes
 src/urkin/
   kinematics.py   # URRobot: fk, ik, ik_closest, ik_numerical, jacobian, manipulability
   robots.py       # DH tables for UR3e / UR5e / UR10e

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "urkin"
-version = "0.1.0"
+version = "0.1.1"
 description = "Forward/inverse kinematics and Jacobians for Universal Robots e-Series arms (UR3e, UR5e, UR10e)"
 readme = "README.md"
 license = "MIT"

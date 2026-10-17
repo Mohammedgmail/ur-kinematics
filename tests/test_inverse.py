@@ -44,7 +44,23 @@ def test_wrist_singularity_still_reaches_pose(robot):
     sols = robot.ik(T)
     assert len(sols) >= 1
     for s in sols:
-        np.testing.assert_allclose(robot.fk(s), T, atol=1e-8)
+        np.testing.assert_allclose(robot.fk(s), T, atol=1e-10)
+
+
+def test_wrist_singularity_full_precision(robot, rng):
+    """Exactly at q5 = 0 or pi, every solution must still be exact.
+
+    Regression test: computing q5 with arccos lost ~8 digits here (errors
+    ~1e-7, platform-dependent); atan2 keeps machine precision.
+    """
+    for _ in range(100):
+        q = rng.uniform(-np.pi, np.pi, 6)
+        q[4] = rng.choice([0.0, np.pi])
+        T = robot.fk(q)
+        sols = robot.ik(T)
+        assert len(sols) >= 1
+        for s in sols:
+            np.testing.assert_allclose(robot.fk(s), T, atol=1e-10)
 
 
 def test_ik_with_tool_offset(robot, rng):
